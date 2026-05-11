@@ -53,6 +53,28 @@
   .iphone-add-bar input:focus { border-color: var(--accent); background: var(--surface); }
   .iphone-add-bar button { padding: 13px 18px; font-size: 15px; font-weight: 500; border: none; border-radius: var(--radius); background: var(--accent); color: white; cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap; }
 
+  /* IPHONE TABS */
+  .iphone-tabs { display: flex; border-bottom: 0.5px solid var(--border); background: var(--surface); }
+  .iphone-tab { flex: 1; padding: 12px 4px; font-size: 14px; font-weight: 500; color: var(--text-2); border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: 'DM Sans', sans-serif; }
+  .iphone-tab svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .iphone-tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
+  .iphone-week-nav { display: flex; align-items: center; gap: 8px; padding: 10px 0 14px; }
+  .iphone-week-nav span { font-size: 16px; font-weight: 500; color: var(--text); flex: 1; }
+
+  /* IPHONE PLANNING BLOCKS */
+  .iphone-day-block { margin-bottom: 20px; }
+  .iphone-day-header { font-size: 13px; font-weight: 500; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 0.5px solid var(--border); }
+  .iphone-day-header span { color: var(--accent); }
+  .iphone-slot { display: flex; align-items: stretch; gap: 10px; margin-bottom: 8px; }
+  .iphone-slot-label { font-size: 11px; color: var(--text-3); width: 30px; flex-shrink: 0; padding-top: 12px; text-align: right; }
+  .iphone-slot-cell { flex: 1; border-radius: var(--radius); border: 0.5px solid var(--border); background: var(--surface); min-height: 56px; cursor: pointer; display: flex; align-items: center; }
+  .iphone-slot-cell.empty { border-style: dashed; justify-content: center; }
+  .iphone-slot-cell.empty svg { width: 18px; height: 18px; stroke: var(--border-mid); fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .iphone-slot-inner { padding: 10px 12px; width: 100%; }
+  .iphone-meal-name { font-size: 14px; font-weight: 500; margin-bottom: 3px; }
+  .iphone-meal-remove { float: right; border: none; background: none; cursor: pointer; opacity: 0.4; padding: 0 0 0 8px; }
+  .iphone-meal-remove svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+
   /* ========== IPAD VIEW ========== */
   #view-ipad { display: none; max-width: 768px; margin: 0 auto; }
   .topbar { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px 14px; background: var(--bg); position: sticky; top: 0; z-index: 10; }
@@ -175,22 +197,47 @@
 <!-- ========== IPHONE VIEW ========== -->
 <div id="view-iphone">
   <div class="iphone-header">
-    <span class="iphone-title">Courses</span>
+    <span class="iphone-title" id="iphone-title">Courses</span>
     <div class="sync-badge offline" id="iphone-sync-badge">
       <div class="sync-dot"></div>
       <span id="iphone-sync-label">Connexion...</span>
     </div>
   </div>
-  <div class="iphone-list" id="iphone-list"></div>
-  <div class="iphone-clear-wrap" id="iphone-clear-wrap" style="display:none;padding:0 16px 16px;">
-    <button class="iphone-clear" onclick="confirmClearShop()">
-      <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
-      Vider la liste
+  <div class="iphone-tabs">
+    <button class="iphone-tab active" id="itab-courses" onclick="showIphoneTab('courses')">
+      <svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+      Courses
+    </button>
+    <button class="iphone-tab" id="itab-planning" onclick="showIphoneTab('planning')">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Planning
     </button>
   </div>
-  <div class="iphone-add-bar">
-    <input id="iphone-input" placeholder="Ajouter un article..." onkeydown="if(event.key==='Enter')addShopItem()" />
-    <button onclick="addShopItem()">Ajouter</button>
+
+  <!-- Courses pane -->
+  <div id="iphone-pane-courses">
+    <div class="iphone-list" id="iphone-list"></div>
+    <div class="iphone-clear-wrap" id="iphone-clear-wrap" style="display:none;padding:0 16px 16px;">
+      <button class="iphone-clear" onclick="confirmClearShop()">
+        <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
+        Vider la liste
+      </button>
+    </div>
+    <div class="iphone-add-bar">
+      <input id="iphone-input" placeholder="Ajouter un article..." onkeydown="if(event.key==='Enter')addShopItem()" />
+      <button onclick="addShopItem()">Ajouter</button>
+    </div>
+  </div>
+
+  <!-- Planning pane -->
+  <div id="iphone-pane-planning" style="display:none;padding:12px 16px 100px;">
+    <div class="iphone-week-nav">
+      <button class="nav-arrow" onclick="changeWeek(-1)">&#8249;</button>
+      <span id="iphone-week-label"></span>
+      <button class="nav-arrow" onclick="changeWeek(1)">&#8250;</button>
+      <button id="iphone-today-btn" onclick="goToToday()" style="display:none;font-size:11px;font-weight:500;padding:5px 10px;border:0.5px solid var(--accent);border-radius:20px;background:var(--purple-bg);color:var(--accent);cursor:pointer;font-family:'DM Sans',sans-serif;">Aujourd'hui</button>
+    </div>
+    <div id="iphone-planning-rows"></div>
   </div>
 </div>
 
@@ -497,7 +544,8 @@ async function assignRecipe(id) {
   planning[currentSlot] = id;
   lsSave('planning', planning);
   if (online) await sb.from('planning').upsert({id:currentSlot, recipe_id:id, updated_at:new Date().toISOString()});
-  closeModal(); renderPlanning();
+  closeModal();
+  if (isPhone) renderIphonePlanning(); else renderPlanning();
 }
 
 async function clearSlot() {
@@ -505,7 +553,8 @@ async function clearSlot() {
   delete planning[currentSlot];
   lsSave('planning', planning);
   if (online) await sb.from('planning').delete().eq('id', currentSlot);
-  closeModal(); renderPlanning();
+  closeModal();
+  if (isPhone) renderIphonePlanning(); else renderPlanning();
 }
 
 async function removeSlot(key) {
@@ -566,17 +615,23 @@ function getWeekLabel(offset) {
 }
 function changeWeek(dir) {
   weekOffset += dir; lsSave('weekOffset', weekOffset);
-  document.getElementById('week-label').textContent = getWeekLabel(weekOffset);
-  updateTodayBtn(); renderPlanning();
+  const wl = document.getElementById('week-label');
+  if (wl) wl.textContent = getWeekLabel(weekOffset);
+  updateTodayBtn();
+  if (isPhone) renderIphonePlanning(); else renderPlanning();
 }
 function goToToday() {
   weekOffset = 0; lsSave('weekOffset', 0);
-  document.getElementById('week-label').textContent = getWeekLabel(0);
-  updateTodayBtn(); renderPlanning();
+  const wl = document.getElementById('week-label');
+  if (wl) wl.textContent = getWeekLabel(0);
+  updateTodayBtn();
+  if (isPhone) renderIphonePlanning(); else renderPlanning();
 }
 function updateTodayBtn() {
-  const btn = document.getElementById('today-btn');
-  if (btn) btn.style.display = weekOffset === 0 ? 'none' : 'inline-block';
+  ['today-btn','iphone-today-btn'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.style.display = weekOffset === 0 ? 'none' : 'inline-block';
+  });
 }
 function slotKey(di, slot) { return weekOffset + '_' + di + '_' + slot; }
 function personContext(p, di) { return p[['lundi','mardi','mercredi','jeudi','vendredi'][di]] || ''; }
@@ -668,6 +723,71 @@ function renderSuggestion() {
   if (t) t.innerHTML = '<span class="tag-pill '+m.cls+'">'+m.label+'</span>';
 }
 
+// ---- IPHONE TABS ----
+function showIphoneTab(name) {
+  const panes = ['courses','planning'];
+  panes.forEach(p => {
+    const pane = document.getElementById('iphone-pane-' + p);
+    const tab = document.getElementById('itab-' + p);
+    if (pane) pane.style.display = p === name ? 'block' : 'none';
+    if (tab) tab.className = 'iphone-tab' + (p === name ? ' active' : '');
+  });
+  // hide add bar when on planning
+  const addBar = document.querySelector('.iphone-add-bar');
+  if (addBar) addBar.style.display = name === 'courses' ? 'flex' : 'none';
+  if (name === 'planning') renderIphonePlanning();
+}
+
+function renderIphonePlanning() {
+  const container = document.getElementById('iphone-planning-rows');
+  const weekLbl = document.getElementById('iphone-week-label');
+  const todayBtn = document.getElementById('iphone-today-btn');
+  if (!container) return;
+  if (weekLbl) weekLbl.textContent = getWeekLabel(weekOffset);
+  if (todayBtn) todayBtn.style.display = weekOffset === 0 ? 'none' : 'inline-block';
+  container.innerHTML = '';
+  const ws = getWeekStart(weekOffset);
+  DAYS.forEach((day, di) => {
+    const d = new Date(ws); d.setDate(ws.getDate() + di);
+    const todayCls = isToday(di) ? ' <span>' + d.getDate() + '</span>' : ' ' + d.getDate();
+    const block = document.createElement('div');
+    block.className = 'iphone-day-block';
+    block.innerHTML = '<div class="iphone-day-header">' + day + todayCls + ' ' + MONTHS[d.getMonth()] + '</div>';
+    ['midi','soir'].forEach(slot => {
+      const key = slotKey(di, slot);
+      const recipe = planning[key] ? recipes.find(r => r.id === planning[key]) : null;
+      const col = recipe ? (COLORS[recipe.colorKey] || COLORS.default) : null;
+      const slotDiv = document.createElement('div');
+      slotDiv.className = 'iphone-slot';
+      slotDiv.innerHTML = '<div class="iphone-slot-label">' + (slot === 'midi' ? 'Midi' : 'Soir') + '</div>';
+      const cell = document.createElement('div');
+      cell.className = 'iphone-slot-cell' + (recipe ? '' : ' empty');
+      if (recipe) {
+        cell.style.background = col.bg;
+        cell.style.borderColor = col.bd;
+        const icon = RECIPE_ICONS[recipe.colorKey] || RECIPE_ICONS.default;
+        cell.innerHTML = '<div class="iphone-slot-inner"><div class="iphone-meal-name" style="color:' + col.txt + '">' +
+          icon + ' ' + esc(recipe.name) +
+          '<button class="iphone-meal-remove" onclick="event.stopPropagation();removeSlotIphone('' + key + '')" aria-label="retirer"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
+          '</div></div>';
+      } else {
+        cell.innerHTML = '<svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+      }
+      cell.onclick = () => openModal(key, day, slot);
+      slotDiv.appendChild(cell);
+      block.appendChild(slotDiv);
+    });
+    container.appendChild(block);
+  });
+}
+
+async function removeSlotIphone(key) {
+  delete planning[key];
+  lsSave('planning', planning);
+  if (online) await sb.from('planning').delete().eq('id', key);
+  renderIphonePlanning();
+}
+
 // ---- TABS ----
 function showTab(name, el) {
   document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
@@ -687,12 +807,10 @@ renderShop();
 
 (async () => {
   await loadShopFromSupabase();
-  if (!isPhone) await loadPlanningFromSupabase();
-  // Subscribe AFTER initial load so existing DB items don't fire as INSERT events
-  // Small delay to let Supabase finish its initial snapshot before we listen
+  await loadPlanningFromSupabase();
   setTimeout(() => {
     subscribeShop();
-    if (!isPhone) subscribePlanning();
+    subscribePlanning();
   }, 800);
 })();
 </script>
