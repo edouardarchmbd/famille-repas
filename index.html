@@ -766,10 +766,8 @@ function renderIphonePlanning() {
         cell.style.background = col.bg;
         cell.style.borderColor = col.bd;
         const icon = RECIPE_ICONS[recipe.colorKey] || RECIPE_ICONS.default;
-        cell.innerHTML = '<div class="iphone-slot-inner"><div class="iphone-meal-name" style="color:' + col.txt + '">' +
-          icon + ' ' + esc(recipe.name) +
-          '<button class="iphone-meal-remove" onclick="event.stopPropagation();removeSlotIphone('' + key + '')" aria-label="retirer"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
-          '</div></div>';
+        const removeBtn = '<button class="iphone-meal-remove" onclick="event.stopPropagation();removeSlotIphone(\'' + key + '\')" aria-label="retirer"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
+        cell.innerHTML = '<div class="iphone-slot-inner"><div class="iphone-meal-name" style="color:' + col.txt + '">' + icon + ' ' + esc(recipe.name) + removeBtn + '</div></div>';
       } else {
         cell.innerHTML = '<svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
       }
