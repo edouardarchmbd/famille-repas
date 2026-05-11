@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Repas famille</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&display=swap');
+  :root {
+    --bg: #f7f6f2; --surface: #ffffff;
+    --border: rgba(0,0,0,0.1); --border-mid: rgba(0,0,0,0.18);
+    --text: #1a1a1a; --text-2: #6b6b6b; --text-3: #aaaaaa;
+    --purple-bg: #eeedfe; --purple-bd: #afa9ec; --purple-txt: #3c3489;
+    --pink-bg: #fbeaf0; --pink-bd: #ed93b1; --pink-txt: #72243e;
+    --green-bg: #eaf3de; --green-bd: #97c459; --green-txt: #27500a;
+    --teal-bg: #e1f5ee; --teal-bd: #5dcaa5; --teal-txt: #085041;
+    --amber-bg: #faeeda; --amber-bd: #ef9f27; --amber-txt: #633806;
+    --blue-bg: #e6f1fb; --blue-bd: #85b7eb; --blue-txt: #0c447c;
+    --coral-bg: #faece7; --coral-txt: #993c1d;
+    --red-bd: rgba(220,60,60,0.4); --red-txt: #a32d2d;
+    --accent: #534ab7; --radius: 10px; --radius-sm: 6px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* SYNC BADGE */
+  .sync-badge { font-size: 11px; padding: 4px 10px; border-radius: 20px; background: var(--teal-bg); color: var(--teal-txt); display: flex; align-items: center; gap: 5px; }
+  .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: #1d9e75; }
+  .sync-badge.offline { background: #f1efea; color: var(--text-3); }
+  .sync-badge.offline .sync-dot { background: var(--text-3); }
+
+  /* ========== IPHONE VIEW ========== */
+  #view-iphone { display: none; max-width: 480px; margin: 0 auto; padding-bottom: 80px; }
+  .iphone-header { background: var(--bg); padding: 20px 20px 14px; position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; }
+  .iphone-title { font-size: 24px; font-weight: 500; color: var(--text); }
+  .iphone-list { padding: 0 16px; }
+  .iphone-item { display: flex; align-items: center; gap: 12px; padding: 15px 0; border-bottom: 0.5px solid var(--border); }
+  .iphone-item:last-child { border-bottom: none; }
+  .iphone-cb { width: 26px; height: 26px; border-radius: 7px; border: 0.5px solid var(--border-mid); background: var(--surface); cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .iphone-cb.done { background: #1d9e75; border-color: #1d9e75; }
+  .iphone-cb svg { width: 14px; height: 14px; stroke: white; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  .iphone-name { font-size: 18px; color: var(--text); flex: 1; }
+  .iphone-name.done { text-decoration: line-through; color: var(--text-3); }
+  .iphone-del { border: none; background: none; cursor: pointer; color: var(--text-3); padding: 4px; display: flex; }
+  .iphone-del svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; }
+  .iphone-empty { text-align: center; padding: 70px 20px; font-size: 16px; color: var(--text-3); line-height: 1.7; }
+  .iphone-clear-wrap { padding: 16px; }
+  .iphone-clear { width: 100%; padding: 13px; font-size: 14px; font-weight: 500; border: 0.5px solid var(--red-bd); border-radius: var(--radius); background: transparent; color: var(--red-txt); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: 'DM Sans', sans-serif; }
+  .iphone-clear svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; }
+  .iphone-add-bar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; padding: 12px 16px; background: var(--surface); border-top: 0.5px solid var(--border); display: flex; gap: 8px; }
+  .iphone-add-bar input { flex: 1; padding: 13px 14px; font-size: 16px; border: 0.5px solid var(--border-mid); border-radius: var(--radius); background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; outline: none; }
+  .iphone-add-bar input:focus { border-color: var(--accent); background: var(--surface); }
+  .iphone-add-bar button { padding: 13px 18px; font-size: 15px; font-weight: 500; border: none; border-radius: var(--radius); background: var(--accent); color: white; cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap; }
+
+  /* ========== IPAD VIEW ========== */
+  #view-ipad { display: none; max-width: 768px; margin: 0 auto; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px 14px; background: var(--bg); position: sticky; top: 0; z-index: 10; }
+  .week-nav { display: flex; align-items: center; gap: 8px; }
+  .week-label { font-size: 18px; font-weight: 500; color: var(--text); }
+  .nav-arrow { font-size: 26px; line-height: 1; border: none; background: none; cursor: pointer; color: var(--text-2); padding: 4px 8px; border-radius: var(--radius-sm); }
+  .nav-arrow:active { background: var(--border); }
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+  .avatars { display: flex; gap: 5px; }
+  .avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; }
+  .av-e { background: var(--purple-bg); color: var(--purple-txt); }
+  .av-c { background: var(--pink-bg); color: var(--pink-txt); }
+  .av-m { background: var(--green-bg); color: var(--green-txt); }
+  .tabs { display: flex; background: var(--surface); border-top: 0.5px solid var(--border); border-bottom: 0.5px solid var(--border); position: sticky; top: 65px; z-index: 10; }
+  .tab { flex: 1; padding: 14px 4px; font-size: 15px; font-weight: 500; text-align: center; color: var(--text-2); border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; display: flex; align-items: center; justify-content: center; gap: 5px; font-family: 'DM Sans', sans-serif; }
+  .tab svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
+  .pane { display: none; padding: 16px 20px 100px; }
+  .pane.active { display: block; }
+
+  /* PLANNING */
+  .col-headers { display: grid; grid-template-columns: 58px 1fr 1fr; gap: 5px; margin-bottom: 6px; }
+  .col-h { font-size: 13px; font-weight: 500; color: var(--text-2); text-align: center; padding: 8px 6px; background: var(--surface); border-radius: var(--radius-sm); border: 0.5px solid var(--border); display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .col-h svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .day-row { display: grid; grid-template-columns: 58px 1fr 1fr; gap: 5px; margin-bottom: 5px; align-items: start; }
+  .day-lbl { display: flex; flex-direction: column; align-items: center; padding-top: 10px; gap: 2px; }
+  .day-name { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.04em; }
+  .day-num { font-size: 22px; font-weight: 500; color: var(--text); line-height: 1.1; }
+  .day-num.today { color: var(--accent); }
+  .cell { border-radius: var(--radius); border: 0.5px solid var(--border); background: var(--surface); min-height: 90px; cursor: pointer; transition: border-color 0.12s; }
+  .cell:active { opacity: 0.85; }
+  .cell.empty { display: flex; align-items: center; justify-content: center; border-style: dashed; }
+  .cell.empty svg { width: 22px; height: 22px; stroke: var(--border-mid); fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .cell-inner { padding: 9px 11px; }
+  .meal-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px; }
+  .meal-name { font-size: 13px; font-weight: 500; line-height: 1.3; flex: 1; }
+  .cell-remove { border: none; background: none; cursor: pointer; padding: 0 0 0 4px; opacity: 0.4; display: flex; align-items: center; }
+  .cell-remove svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+  .person-line { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-2); margin-bottom: 2px; line-height: 1.4; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .dot-e { background: var(--purple-bd); } .dot-c { background: var(--pink-bd); } .dot-m { background: var(--green-bd); }
+  .cook-flag { font-size: 9px; padding: 2px 6px; border-radius: 3px; background: var(--coral-bg); color: var(--coral-txt); margin-top: 4px; display: inline-block; }
+
+  /* RECETTES */
+  .recipe-list { display: flex; flex-direction: column; gap: 5px; }
+  .recipe-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 0.5px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+  .recipe-icon { font-size: 20px; width: 24px; text-align: center; flex-shrink: 0; }
+  .recipe-info { flex: 1; min-width: 0; }
+  .recipe-row-name { font-size: 15px; font-weight: 500; color: var(--text); }
+  .tag-pill { font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 500; display: inline-block; margin-top: 3px; }
+  .tag-v { background: var(--teal-bg); color: var(--teal-txt); }
+  .tag-p { background: var(--blue-bg); color: var(--blue-txt); }
+  .tag-vi { background: var(--amber-bg); color: var(--amber-txt); }
+  .recipe-del { border: none; background: none; cursor: pointer; color: var(--text-3); display: flex; align-items: center; padding: 4px; border-radius: var(--radius-sm); }
+  .recipe-del svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .add-block { margin-top: 12px; padding-top: 12px; border-top: 0.5px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+  .add-block input { width: 100%; padding: 10px 12px; font-size: 14px; border: 0.5px solid var(--border-mid); border-radius: var(--radius); background: var(--surface); color: var(--text); font-family: 'DM Sans', sans-serif; outline: none; }
+  .add-block input:focus { border-color: var(--accent); }
+  .tag-picker { display: flex; gap: 6px; }
+  .tag-btn { flex: 1; padding: 8px 4px; font-size: 12px; font-weight: 500; border: 0.5px solid var(--border-mid); border-radius: 20px; background: var(--surface); cursor: pointer; color: var(--text-2); font-family: 'DM Sans', sans-serif; }
+  .tag-btn.sel-v { background: var(--teal-bg); border-color: var(--teal-bd); color: var(--teal-txt); }
+  .tag-btn.sel-p { background: var(--blue-bg); border-color: var(--blue-bd); color: var(--blue-txt); }
+  .tag-btn.sel-vi { background: var(--amber-bg); border-color: var(--amber-bd); color: var(--amber-txt); }
+  .add-submit { padding: 10px; font-size: 14px; font-weight: 500; border: 0.5px solid var(--border-mid); border-radius: var(--radius); background: var(--surface); color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: 'DM Sans', sans-serif; }
+  .add-submit svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .ia-block { margin-top: 14px; }
+  .ia-label { font-size: 9px; font-weight: 500; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+  .ia-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+  .ia-name { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+  .ia-action { width: 100%; margin-top: 10px; padding: 9px; font-size: 12px; border: 0.5px dashed var(--border-mid); border-radius: var(--radius-sm); background: transparent; color: var(--text-2); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; font-family: 'DM Sans', sans-serif; }
+  .ia-action svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* COURSES iPad */
+  .shop-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+  .shop-item:last-child { border-bottom: none; }
+  .cb { width: 22px; height: 22px; border-radius: 5px; border: 0.5px solid var(--border-mid); background: var(--surface); cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .cb.done { background: #1d9e75; border-color: #1d9e75; }
+  .cb svg { width: 12px; height: 12px; stroke: white; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  .item-name { font-size: 15px; color: var(--text); flex: 1; }
+  .item-name.done { text-decoration: line-through; color: var(--text-3); }
+  .item-del { border: none; background: none; cursor: pointer; color: var(--text-3); display: flex; align-items: center; padding: 3px; }
+  .item-del svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; }
+  .shop-add { display: flex; gap: 6px; margin-top: 10px; }
+  .shop-add input { flex: 1; padding: 10px 12px; font-size: 14px; border: 0.5px solid var(--border-mid); border-radius: var(--radius); background: var(--surface); color: var(--text); font-family: 'DM Sans', sans-serif; outline: none; }
+  .shop-add input:focus { border-color: var(--accent); }
+  .shop-add button { padding: 10px 16px; font-size: 14px; font-weight: 500; border: 0.5px solid var(--border-mid); border-radius: var(--radius); background: var(--surface); color: var(--text); cursor: pointer; font-family: 'DM Sans', sans-serif; display: flex; align-items: center; gap: 4px; }
+  .shop-add button svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .clear-btn { width: 100%; margin-top: 12px; padding: 10px; font-size: 13px; border: 0.5px solid var(--red-bd); border-radius: var(--radius); background: transparent; color: var(--red-txt); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: 'DM Sans', sans-serif; font-weight: 500; }
+  .clear-btn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .empty-state { text-align: center; padding: 30px 0; font-size: 14px; color: var(--text-3); }
+
+  /* MODALS */
+  .modal-backdrop { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.4); align-items: flex-end; justify-content: center; }
+  .modal-backdrop.open { display: flex; }
+  .modal { background: var(--surface); border-radius: var(--radius) var(--radius) 0 0; width: 100%; max-width: 768px; padding: 16px; max-height: 70vh; display: flex; flex-direction: column; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .modal-title { font-size: 16px; font-weight: 500; color: var(--text); }
+  .modal-close { border: none; background: none; cursor: pointer; padding: 4px; color: var(--text-2); display: flex; align-items: center; }
+  .modal-close svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+  .modal-list { overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 5px; }
+  .modal-recipe { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border: 0.5px solid var(--border); border-radius: var(--radius); background: var(--surface); cursor: pointer; width: 100%; text-align: left; font-family: 'DM Sans', sans-serif; }
+  .modal-recipe:active { background: var(--bg); }
+  .modal-recipe-icon { font-size: 18px; width: 22px; text-align: center; flex-shrink: 0; }
+  .modal-recipe-name { font-size: 14px; font-weight: 500; color: var(--text); flex: 1; }
+  .modal-footer { margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--border); }
+  .modal-clear { width: 100%; padding: 10px; font-size: 13px; font-weight: 500; border: 0.5px solid var(--red-bd); border-radius: var(--radius); background: transparent; color: var(--red-txt); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: 'DM Sans', sans-serif; }
+  .modal-clear svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; }
+  .confirm-backdrop { display: none; position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; padding: 24px; }
+  .confirm-backdrop.open { display: flex; }
+  .confirm-box { background: var(--surface); border-radius: var(--radius); padding: 20px; width: 100%; max-width: 320px; }
+  .confirm-title { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+  .confirm-msg { font-size: 13px; color: var(--text-2); margin-bottom: 16px; line-height: 1.5; }
+  .confirm-actions { display: flex; gap: 8px; }
+  .confirm-cancel { flex: 1; padding: 9px; font-size: 13px; font-weight: 500; border: 0.5px solid var(--border-mid); border-radius: var(--radius); background: transparent; color: var(--text); cursor: pointer; font-family: 'DM Sans', sans-serif; }
+  .confirm-ok { flex: 1; padding: 9px; font-size: 13px; font-weight: 500; border: 0.5px solid var(--red-bd); border-radius: var(--radius); background: transparent; color: var(--red-txt); cursor: pointer; font-family: 'DM Sans', sans-serif; }
+</style>
+</head>
+<body>
+
+<!-- ========== IPHONE VIEW ========== -->
+<div id="view-iphone">
+  <div class="iphone-header">
+    <span class="iphone-title">Courses</span>
+    <div class="sync-badge offline" id="iphone-sync-badge">
+      <div class="sync-dot"></div>
+      <span id="iphone-sync-label">Connexion...</span>
+    </div>
+  </div>
+  <div class="iphone-list" id="iphone-list"></div>
+  <div class="iphone-clear-wrap" id="iphone-clear-wrap" style="display:none">
+    <button class="iphone-clear" onclick="confirmClearShop()">
+      <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
+      Vider la liste
+    </button>
+  </div>
+  <div class="iphone-add-bar">
+    <input id="iphone-input" placeholder="Ajouter un article..." onkeydown="if(event.key==='Enter')addShopItem()" />
+    <button onclick="addShopItem()">Ajouter</button>
+  </div>
+</div>
+
+<!-- ========== IPAD VIEW ========== -->
+<div id="view-ipad">
+  <div class="topbar">
+    <div class="week-nav">
+      <button class="nav-arrow" onclick="changeWeek(-1)" aria-label="semaine précédente">&#8249;</button>
+      <span class="week-label" id="week-label"></span>
+      <button class="nav-arrow" onclick="changeWeek(1)" aria-label="semaine suivante">&#8250;</button>
+      <button id="today-btn" onclick="goToToday()" style="display:none;font-size:12px;font-weight:500;padding:5px 12px;border:0.5px solid var(--accent);border-radius:20px;background:var(--purple-bg);color:var(--accent);cursor:pointer;font-family:'DM Sans',sans-serif;">Aujourd'hui</button>
+    </div>
+    <div class="topbar-right">
+      <div class="sync-badge offline" id="ipad-sync-badge"><div class="sync-dot"></div><span id="ipad-sync-label">Connexion...</span></div>
+      <div class="avatars">
+        <div class="avatar av-e">E</div>
+        <div class="avatar av-c">C</div>
+        <div class="avatar av-m">M</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('planning',this)">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Planning
+    </button>
+    <button class="tab" onclick="showTab('recettes',this)">
+      <svg viewBox="0 0 24 24"><path d="M12 2C8 2 5 5 5 9c0 3 2 5.5 5 6.5V20h4v-4.5C17 14.5 19 12 19 9c0-4-3-7-7-7z"/></svg>
+      Recettes
+    </button>
+    <button class="tab" onclick="showTab('courses',this)">
+      <svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+      Courses
+    </button>
+  </div>
+
+  <div id="pane-planning" class="pane active">
+    <div class="col-headers">
+      <div></div>
+      <div class="col-h"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>Midi</div>
+      <div class="col-h"><svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>Soir</div>
+    </div>
+    <div id="planning-rows"></div>
+  </div>
+
+  <div id="pane-recettes" class="pane">
+    <div class="recipe-list" id="recipe-list"></div>
+    <div class="add-block">
+      <input id="new-recipe-input" placeholder="Nom de la recette..." />
+      <div class="tag-picker">
+        <button class="tag-btn sel-v" id="btn-v" onclick="selectTag('v')">Végé</button>
+        <button class="tag-btn" id="btn-p" onclick="selectTag('p')">Poisson</button>
+        <button class="tag-btn" id="btn-vi" onclick="selectTag('vi')">Viande</button>
+      </div>
+      <button class="add-submit" onclick="addRecipe()">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Ajouter la recette
+      </button>
+    </div>
+    <div class="ia-block">
+      <div class="ia-label">Idée de recette</div>
+      <div class="ia-card">
+        <div class="ia-name" id="ia-name"></div>
+        <div id="ia-tag"></div>
+        <button class="ia-action" onclick="nextSuggestion()">
+          <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Autre idée
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="pane-courses" class="pane">
+    <div id="shop-list"></div>
+    <div class="shop-add">
+      <input id="new-item-input" placeholder="Ajouter un article..." onkeydown="if(event.key==='Enter')addShopItem()" />
+      <button onclick="addShopItem()">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+    <button class="clear-btn" onclick="confirmClearShop()">
+      <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
+      Vider la liste de courses
+    </button>
+  </div>
+</div>
+
+<!-- MODAL RECETTE -->
+<div class="modal-backdrop" id="modal-backdrop" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-title">Choisir un repas</span>
+      <button class="modal-close" onclick="closeModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-list" id="modal-list"></div>
+    <div class="modal-footer">
+      <button class="modal-clear" onclick="clearSlot()">
+        <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
+        Vider ce créneau
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM -->
+<div class="confirm-backdrop" id="confirm-backdrop">
+  <div class="confirm-box">
+    <div class="confirm-title" id="confirm-title">Confirmer</div>
+    <div class="confirm-msg" id="confirm-msg"></div>
+    <div class="confirm-actions">
+      <button class="confirm-cancel" onclick="closeConfirm()">Annuler</button>
+      <button class="confirm-ok" id="confirm-ok-btn">Vider</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://qmhqgcgqgakzkoexbgdn.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFtaHFnY2dxZ2FremtvZXhiZ2RuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0OTgwMTQsImV4cCI6MjA5NDA3NDAxNH0.lFuuZppKWICD3bc3ca88WGxVOGJmRvDjgEP-daIkAeU';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const DAYS = ['Lun','Mar','Mer','Jeu','Ven'];
+const MONTHS = ['jan','fév','mar','avr','mai','juin','juil','aoû','sep','oct','nov','déc'];
+const PERSONS = [
+  {label:'Edouard', dot:'dot-e', lundi:'Niort', mardi:'Niort'},
+  {label:'Coralie', dot:'dot-c', lundi:'maison', mardi:'travail'},
+  {label:'Maël', dot:'dot-m', mardi:'nounou', mercredi:'nounou', jeudi:'nounou', vendredi:'nounou'},
+];
+const COLORS = {
+  dhal:{bg:'#E1F5EE',bd:'#5DCAA5',txt:'#085041'}, quiche:{bg:'#FAEEDA',bd:'#EF9F27',txt:'#633806'},
+  gnocchi:{bg:'#EEEDFE',bd:'#AFA9EC',txt:'#3C3489'}, riz:{bg:'#E6F1FB',bd:'#85B7EB',txt:'#0C447C'},
+  pizza:{bg:'#FBEAF0',bd:'#ED93B1',txt:'#72243E'}, default:{bg:'#F1EFE8',bd:'#B4B2A9',txt:'#444441'},
+};
+const TAG_META = { v:{label:'Végé',cls:'tag-v'}, p:{label:'Poisson',cls:'tag-p'}, vi:{label:'Viande',cls:'tag-vi'} };
+const RECIPE_ICONS = { dhal:'🥘',quiche:'🥧',gnocchi:'🫕',riz:'🍚',pizza:'🍕',salade:'🥗',croque:'🥪',default:'🍽️' };
+const SUGGESTIONS = [
+  {name:'Curry pois chiches épinards',tag:'v'},{name:'Tarte tomate moutarde',tag:'v'},
+  {name:'Dos de cabillaud vapeur légumes',tag:'p'},{name:'Riz sauté wok légumes',tag:'v'},
+  {name:'Couscous semoule légumes rôtis',tag:'v'},{name:'Lasagnes courgettes ricotta',tag:'v'},
+  {name:'Soupe lentilles corail gingembre',tag:'v'},{name:'Filet de merlu sauce citron',tag:'p'},
+  {name:'Tian de légumes provençal',tag:'v'},{name:'Galettes de quinoa légumes',tag:'v'},
+  {name:'Brandade de merlu',tag:'p'},{name:'Gratin de chou-fleur béchamel',tag:'v'},
+  {name:'Soupe minestrone',tag:'v'},{name:'Riz pilaf petits pois carottes',tag:'v'},
+  {name:'Pâtes aux légumes rôtis',tag:'v'},{name:'Wok de saumon brocolis',tag:'p'},
+  {name:'Ratatouille riz complet',tag:'v'},{name:'Velouté potimarron lentilles',tag:'v'},
+  {name:'Gratin de poireaux jambon',tag:'vi'},{name:'Tarte épinards ricotta',tag:'v'},
+  {name:'Cabillaud en papillote tomates',tag:'p'},{name:'Poêlée de pois chiches courgettes',tag:'v'},
+  {name:'Gratin de pommes de terre chèvre',tag:'v'},{name:'Crumble courgettes chèvre',tag:'v'},
+];
+
+function lsLoad(key, def) { try { return JSON.parse(localStorage.getItem(key)) || def; } catch(e) { return def; } }
+function lsSave(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {} }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+const isPhone = window.innerWidth < 600;
+let online = false;
+let shopItems = [];
+let recipes = lsLoad('recipes', [
+  {id:1,name:'Dhal lentilles corail',tag:'v',colorKey:'dhal'},
+  {id:2,name:'Quiche courgette',tag:'v',colorKey:'quiche'},
+  {id:3,name:'Gratin gnocchi',tag:'v',colorKey:'gnocchi'},
+  {id:4,name:'Riz coco poireaux',tag:'p',colorKey:'riz'},
+  {id:5,name:'Pizza maison',tag:'v',colorKey:'pizza'},
+  {id:6,name:'Salade composée',tag:'v',colorKey:'default'},
+  {id:7,name:'Croque truite fumée',tag:'p',colorKey:'default'},
+]);
+let planning = lsLoad('planning', {});
+let weekOffset = lsLoad('weekOffset', 0);
+let currentSlot = null;
+let selectedTag = 'v';
+let suggIdx = Math.floor(Math.random() * SUGGESTIONS.length);
+let confirmCallback = null;
+let _pendingIds = new Set();
+
+// ---- ROUTING ----
+function initView() {
+  if (isPhone) {
+    document.getElementById('view-iphone').style.display = 'block';
+  } else {
+    document.getElementById('view-ipad').style.display = 'block';
+    document.getElementById('week-label').textContent = getWeekLabel(weekOffset);
+    updateTodayBtn();
+    renderPlanning();
+    renderRecipes();
+    renderSuggestion();
+  }
+}
+
+// ---- SYNC STATUS ----
+function setSyncStatus(ok) {
+  online = ok;
+  ['ipad','iphone'].forEach(prefix => {
+    const badge = document.getElementById(prefix + '-sync-badge');
+    const lbl = document.getElementById(prefix + '-sync-label');
+    if (!badge) return;
+    badge.className = 'sync-badge' + (ok ? '' : ' offline');
+    if (lbl) lbl.textContent = ok ? 'Synchro' : 'Hors ligne';
+  });
+}
+
+// ---- LOAD SHOP ----
+async function loadShopFromSupabase() {
+  const { data, error } = await sb.from('courses').select('*').order('created_at', {ascending: true});
+  if (error) { setSyncStatus(false); shopItems = lsLoad('shopItems', []); renderShop(); return; }
+  setSyncStatus(true);
+  shopItems = data.map(r => ({id: r.id, name: r.name, done: r.done}));
+  lsSave('shopItems', shopItems);
+  renderShop();
+}
+
+// ---- LOAD PLANNING ----
+async function loadPlanningFromSupabase() {
+  const { data, error } = await sb.from('planning').select('*');
+  if (error) { planning = lsLoad('planning', {}); renderPlanning(); return; }
+  planning = {};
+  data.forEach(r => { planning[r.id] = r.recipe_id; });
+  lsSave('planning', planning);
+  renderPlanning();
+}
+
+// ---- SUBSCRIPTIONS ----
+function subscribeShop() {
+  sb.channel('courses-rt')
+    .on('postgres_changes', {event:'*', schema:'public', table:'courses'}, payload => {
+      const {eventType, new:n, old:o} = payload;
+      if (eventType === 'INSERT') {
+        if (_pendingIds.has(String(n.name + n.done))) { _pendingIds.delete(String(n.name + n.done)); return; }
+        if (!shopItems.find(i => i.id === n.id)) { shopItems.push({id:n.id, name:n.name, done:n.done}); lsSave('shopItems', shopItems); renderShop(); }
+      } else if (eventType === 'UPDATE') {
+        const item = shopItems.find(i => i.id === n.id);
+        if (item) { item.done = n.done; item.name = n.name; lsSave('shopItems', shopItems); renderShop(); }
+      } else if (eventType === 'DELETE') {
+        shopItems = shopItems.filter(i => i.id !== o.id);
+        lsSave('shopItems', shopItems); renderShop();
+      }
+    }).subscribe();
+}
+
+function subscribePlanning() {
+  sb.channel('planning-rt')
+    .on('postgres_changes', {event:'*', schema:'public', table:'planning'}, payload => {
+      const {eventType, new:n, old:o} = payload;
+      if (eventType === 'DELETE') { delete planning[o.id]; }
+      else { planning[n.id] = n.recipe_id; }
+      lsSave('planning', planning);
+      renderPlanning();
+    }).subscribe();
+}
+
+// ---- SHOP ACTIONS ----
+async function addShopItem() {
+  const inputId = isPhone ? 'iphone-input' : 'new-item-input';
+  const input = document.getElementById(inputId);
+  const val = input.value.trim();
+  if (!val) return;
+  input.value = '';
+
+  if (online) {
+    _pendingIds.add(String(val + false));
+    const {data, error} = await sb.from('courses').insert({name:val, done:false}).select().single();
+    if (!error && data) {
+      shopItems.push({id:data.id, name:val, done:false});
+      lsSave('shopItems', shopItems); renderShop(); return;
+    }
+    _pendingIds.delete(String(val + false));
+  }
+  shopItems.push({id:Date.now(), name:val, done:false});
+  lsSave('shopItems', shopItems); renderShop();
+}
+
+async function toggleItem(id) {
+  const item = shopItems.find(i => i.id === id);
+  if (!item) return;
+  item.done = !item.done;
+  lsSave('shopItems', shopItems); renderShop();
+  if (online) await sb.from('courses').update({done:item.done}).eq('id', id);
+}
+
+async function deleteItem(id) {
+  shopItems = shopItems.filter(i => i.id !== id);
+  lsSave('shopItems', shopItems); renderShop();
+  if (online) await sb.from('courses').delete().eq('id', id);
+}
+
+function confirmClearShop() {
+  document.getElementById('confirm-title').textContent = 'Vider la liste de courses ?';
+  document.getElementById('confirm-msg').textContent = 'Tous les articles seront supprimés. Cette action est irréversible.';
+  document.getElementById('confirm-ok-btn').textContent = 'Vider';
+  confirmCallback = async () => {
+    if (online) await sb.from('courses').delete().neq('id', 0);
+    shopItems = []; lsSave('shopItems', shopItems); renderShop();
+  };
+  document.getElementById('confirm-backdrop').classList.add('open');
+}
+
+// ---- PLANNING ACTIONS ----
+async function assignRecipe(id) {
+  if (!currentSlot) return;
+  planning[currentSlot] = id;
+  lsSave('planning', planning);
+  if (online) await sb.from('planning').upsert({id:currentSlot, recipe_id:id, updated_at:new Date().toISOString()});
+  closeModal(); renderPlanning();
+}
+
+async function clearSlot() {
+  if (!currentSlot) return;
+  delete planning[currentSlot];
+  lsSave('planning', planning);
+  if (online) await sb.from('planning').delete().eq('id', currentSlot);
+  closeModal(); renderPlanning();
+}
+
+async function removeSlot(key) {
+  delete planning[key];
+  lsSave('planning', planning);
+  if (online) await sb.from('planning').delete().eq('id', key);
+  renderPlanning();
+}
+
+// ---- RENDER SHOP ----
+function renderShop() {
+  renderShopIpad();
+  renderShopIphone();
+}
+
+function shopItemHTML_ipad(i) {
+  return '<div class="shop-item">' +
+    '<div class="cb' + (i.done ? ' done' : '') + '" onclick="toggleItem(' + JSON.stringify(i.id) + ')">' + (i.done ? '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>' : '') + '</div>' +
+    '<span class="item-name' + (i.done ? ' done' : '') + '">' + esc(i.name) + '</span>' +
+    '<button class="item-del" onclick="deleteItem(' + JSON.stringify(i.id) + ')" aria-label="supprimer"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
+    '</div>';
+}
+
+function renderShopIpad() {
+  const el = document.getElementById('shop-list');
+  if (!el) return;
+  el.innerHTML = shopItems.length ? shopItems.map(shopItemHTML_ipad).join('') : '<div class="empty-state">La liste est vide</div>';
+}
+
+function renderShopIphone() {
+  const el = document.getElementById('iphone-list');
+  const clearWrap = document.getElementById('iphone-clear-wrap');
+  if (!el) return;
+  if (!shopItems.length) {
+    el.innerHTML = '<div class="iphone-empty">La liste est vide.<br>Ajoutez un article ci-dessous.</div>';
+    if (clearWrap) clearWrap.style.display = 'none';
+    return;
+  }
+  if (clearWrap) clearWrap.style.display = 'block';
+  el.innerHTML = shopItems.map(i =>
+    '<div class="iphone-item">' +
+    '<div class="iphone-cb' + (i.done ? ' done' : '') + '" onclick="toggleItem(' + JSON.stringify(i.id) + ')">' + (i.done ? '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>' : '') + '</div>' +
+    '<span class="iphone-name' + (i.done ? ' done' : '') + '">' + esc(i.name) + '</span>' +
+    '<button class="iphone-del" onclick="deleteItem(' + JSON.stringify(i.id) + ')" aria-label="supprimer"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
+    '</div>'
+  ).join('');
+}
+
+// ---- PLANNING RENDER ----
+function getWeekStart(offset) {
+  const d = new Date(); const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  const m = new Date(d); m.setDate(diff + offset * 7); m.setHours(0,0,0,0); return m;
+}
+function getWeekLabel(offset) {
+  const m = getWeekStart(offset);
+  return 'Semaine du ' + m.getDate() + ' ' + MONTHS[m.getMonth()];
+}
+function changeWeek(dir) {
+  weekOffset += dir; lsSave('weekOffset', weekOffset);
+  document.getElementById('week-label').textContent = getWeekLabel(weekOffset);
+  updateTodayBtn(); renderPlanning();
+}
+function goToToday() {
+  weekOffset = 0; lsSave('weekOffset', 0);
+  document.getElementById('week-label').textContent = getWeekLabel(0);
+  updateTodayBtn(); renderPlanning();
+}
+function updateTodayBtn() {
+  const btn = document.getElementById('today-btn');
+  if (btn) btn.style.display = weekOffset === 0 ? 'none' : 'inline-block';
+}
+function slotKey(di, slot) { return weekOffset + '_' + di + '_' + slot; }
+function personContext(p, di) { return p[['lundi','mardi','mercredi','jeudi','vendredi'][di]] || ''; }
+function isToday(di) {
+  const ws = getWeekStart(weekOffset); const d = new Date(ws); d.setDate(ws.getDate() + di);
+  const now = new Date();
+  return d.getDate()===now.getDate() && d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+}
+
+function renderPlanning() {
+  const container = document.getElementById('planning-rows');
+  if (!container) return;
+  container.innerHTML = '';
+  const ws = getWeekStart(weekOffset);
+  DAYS.forEach((day, di) => {
+    const row = document.createElement('div'); row.className = 'day-row';
+    const d = new Date(ws); d.setDate(ws.getDate() + di);
+    const lbl = document.createElement('div'); lbl.className = 'day-lbl';
+    lbl.innerHTML = '<span class="day-name">' + day + '</span><span class="day-num' + (isToday(di) ? ' today' : '') + '">' + d.getDate() + '</span>';
+    row.appendChild(lbl);
+    ['midi','soir'].forEach(slot => {
+      const key = slotKey(di, slot);
+      const recipe = planning[key] ? recipes.find(r => r.id === planning[key]) : null;
+      const col = recipe ? (COLORS[recipe.colorKey] || COLORS.default) : null;
+      const cell = document.createElement('div');
+      cell.className = 'cell' + (recipe ? '' : ' empty');
+      if (recipe) { cell.style.background = col.bg; cell.style.borderColor = col.bd; }
+      const isCook = recipe && ((slot==='midi' && di<=2)||(slot==='soir' && di<=1));
+      if (recipe) {
+        const icon = RECIPE_ICONS[recipe.colorKey] || RECIPE_ICONS.default;
+        let html = '<div class="cell-inner"><div class="meal-top"><span class="meal-name" style="color:' + col.txt + '">' + icon + ' ' + esc(recipe.name) + '</span><button class="cell-remove" onclick="event.stopPropagation();removeSlot(\'' + key + '\')" aria-label="retirer"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>';
+        PERSONS.forEach(p => { const ctx = personContext(p, di); html += '<div class="person-line"><div class="dot ' + p.dot + '"></div>' + p.label + (ctx?' - '+ctx:'') + '</div>'; });
+        if (isCook) html += '<div class="cook-flag">dim. soir</div>';
+        html += '</div>';
+        cell.innerHTML = html;
+      } else {
+        cell.innerHTML = '<svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+      }
+      cell.onclick = () => openModal(key, day, slot);
+      row.appendChild(cell);
+    });
+    container.appendChild(row);
+  });
+}
+
+// ---- MODAL ----
+function openModal(key, day, slot) {
+  currentSlot = key;
+  document.getElementById('modal-title').textContent = day + ' - ' + slot;
+  const list = document.getElementById('modal-list'); list.innerHTML = '';
+  recipes.forEach(r => {
+    const m = TAG_META[r.tag]; const icon = RECIPE_ICONS[r.colorKey] || RECIPE_ICONS.default;
+    const btn = document.createElement('button'); btn.className = 'modal-recipe';
+    btn.innerHTML = '<span class="modal-recipe-icon">' + icon + '</span><span class="modal-recipe-name">' + esc(r.name) + '</span><span class="tag-pill ' + m.cls + '">' + m.label + '</span>';
+    btn.onclick = () => assignRecipe(r.id);
+    list.appendChild(btn);
+  });
+  document.getElementById('modal-backdrop').classList.add('open');
+}
+function closeModal() { document.getElementById('modal-backdrop').classList.remove('open'); currentSlot = null; }
+
+// ---- RECETTES ----
+function selectTag(tag) {
+  selectedTag = tag;
+  ['v','p','vi'].forEach(t => { document.getElementById('btn-'+t).className = 'tag-btn'+(t===tag?' sel-'+t:''); });
+}
+function addRecipe() {
+  const input = document.getElementById('new-recipe-input'); const val = input.value.trim();
+  if (!val) return;
+  recipes.push({id:Date.now(), name:val, tag:selectedTag, colorKey:'default'});
+  lsSave('recipes', recipes); input.value=''; renderRecipes();
+}
+function deleteRecipe(id) { recipes = recipes.filter(r => r.id !== id); lsSave('recipes', recipes); renderRecipes(); }
+function renderRecipes() {
+  const list = document.getElementById('recipe-list'); if (!list) return;
+  if (!recipes.length) { list.innerHTML = '<div class="empty-state">Aucune recette</div>'; return; }
+  list.innerHTML = recipes.map(r => {
+    const m = TAG_META[r.tag]; const icon = RECIPE_ICONS[r.colorKey]||RECIPE_ICONS.default;
+    return '<div class="recipe-row"><span class="recipe-icon">'+icon+'</span><div class="recipe-info"><div class="recipe-row-name">'+esc(r.name)+'</div><span class="tag-pill '+m.cls+'">'+m.label+'</span></div><button class="recipe-del" onclick="deleteRecipe('+r.id+')" aria-label="supprimer"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button></div>';
+  }).join('');
+}
+
+// ---- SUGGESTION ----
+function nextSuggestion() { suggIdx=(suggIdx+1)%SUGGESTIONS.length; renderSuggestion(); }
+function renderSuggestion() {
+  const s = SUGGESTIONS[suggIdx]; const m = TAG_META[s.tag];
+  const n = document.getElementById('ia-name'); const t = document.getElementById('ia-tag');
+  if (n) n.textContent = s.name;
+  if (t) t.innerHTML = '<span class="tag-pill '+m.cls+'">'+m.label+'</span>';
+}
+
+// ---- TABS ----
+function showTab(name, el) {
+  document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('pane-'+name).classList.add('active');
+  el.classList.add('active');
+}
+
+// ---- CONFIRM ----
+function closeConfirm() { document.getElementById('confirm-backdrop').classList.remove('open'); confirmCallback=null; }
+document.getElementById('confirm-ok-btn').onclick = () => { if(confirmCallback) confirmCallback(); closeConfirm(); };
+
+// ---- BOOT ----
+initView();
+shopItems = lsLoad('shopItems', []);
+renderShop();
+
+(async () => {
+  await loadShopFromSupabase();
+  if (!isPhone) await loadPlanningFromSupabase();
+  subscribeShop();
+  if (!isPhone) subscribePlanning();
+})();
+</script>
+</body>
+</html>
