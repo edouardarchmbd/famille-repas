@@ -34,7 +34,7 @@
   #view-iphone { display: none; max-width: 480px; margin: 0 auto; padding-bottom: 80px; }
   .iphone-header { background: var(--bg); padding: 20px 20px 14px; position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; }
   .iphone-title { font-size: 24px; font-weight: 500; color: var(--text); }
-  .iphone-list { padding: 0 16px; }
+  .iphone-list { padding: 8px 16px 0; }
   .iphone-item { display: flex; align-items: center; gap: 12px; padding: 15px 0; border-bottom: 0.5px solid var(--border); }
   .iphone-item:last-child { border-bottom: none; }
   .iphone-cb { width: 26px; height: 26px; border-radius: 7px; border: 0.5px solid var(--border-mid); background: var(--surface); cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
@@ -182,7 +182,7 @@
     </div>
   </div>
   <div class="iphone-list" id="iphone-list"></div>
-  <div class="iphone-clear-wrap" id="iphone-clear-wrap" style="display:none">
+  <div class="iphone-clear-wrap" id="iphone-clear-wrap" style="display:none;padding:0 16px 16px;">
     <button class="iphone-clear" onclick="confirmClearShop()">
       <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
       Vider la liste
@@ -418,8 +418,12 @@ function subscribeShop() {
     .on('postgres_changes', {event:'*', schema:'public', table:'courses'}, payload => {
       const {eventType, new:n, old:o} = payload;
       if (eventType === 'INSERT') {
-        if (_pendingIds.has(String(n.name + n.done))) { _pendingIds.delete(String(n.name + n.done)); return; }
-        if (!shopItems.find(i => i.id === n.id)) { shopItems.push({id:n.id, name:n.name, done:n.done}); lsSave('shopItems', shopItems); renderShop(); }
+        const pendingKey = String(n.name + false);
+        if (_pendingIds.has(pendingKey)) { _pendingIds.delete(pendingKey); return; }
+        if (!shopItems.find(i => i.id === n.id)) {
+          shopItems.push({id:n.id, name:n.name, done:n.done});
+          lsSave('shopItems', shopItems); renderShop();
+        }
       } else if (eventType === 'UPDATE') {
         const item = shopItems.find(i => i.id === n.id);
         if (item) { item.done = n.done; item.name = n.name; lsSave('shopItems', shopItems); renderShop(); }
@@ -684,8 +688,12 @@ renderShop();
 (async () => {
   await loadShopFromSupabase();
   if (!isPhone) await loadPlanningFromSupabase();
-  subscribeShop();
-  if (!isPhone) subscribePlanning();
+  // Subscribe AFTER initial load so existing DB items don't fire as INSERT events
+  // Small delay to let Supabase finish its initial snapshot before we listen
+  setTimeout(() => {
+    subscribeShop();
+    if (!isPhone) subscribePlanning();
+  }, 800);
 })();
 </script>
 </body>
