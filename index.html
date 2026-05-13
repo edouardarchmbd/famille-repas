@@ -464,15 +464,16 @@ function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 const isPhone=window.innerWidth<600;
 let online=false;
 let shopItems=[];
-let recipes=lsLoad('recipes',[
-  {id:1,name:'Dhal lentilles corail',tag:'v',colorKey:'dhal',emoji:'🥘'},
-  {id:2,name:'Quiche courgette',tag:'v',colorKey:'quiche',emoji:'🥧'},
-  {id:3,name:'Gratin gnocchi',tag:'v',colorKey:'gnocchi',emoji:'🫕'},
-  {id:4,name:'Riz coco poireaux',tag:'p',colorKey:'riz',emoji:'🍚'},
-  {id:5,name:'Pizza maison',tag:'v',colorKey:'pizza',emoji:'🍕'},
-  {id:6,name:'Salade composée',tag:'v',colorKey:'default',emoji:'🥗'},
-  {id:7,name:'Croque truite fumée',tag:'p',colorKey:'default',emoji:'🥪'},
-]);
+const BASE_RECIPES=[
+  {name:'Dhal lentilles corail',tag:'v',color_key:'dhal',emoji:'🥘'},
+  {name:'Quiche courgette',tag:'v',color_key:'quiche',emoji:'🥧'},
+  {name:'Gratin gnocchi',tag:'v',color_key:'gnocchi',emoji:'🫕'},
+  {name:'Riz coco poireaux',tag:'p',color_key:'riz',emoji:'🍚'},
+  {name:'Pizza maison',tag:'v',color_key:'pizza',emoji:'🍕'},
+  {name:'Salade composée',tag:'v',color_key:'default',emoji:'🥗'},
+  {name:'Croque truite fumée',tag:'p',color_key:'default',emoji:'🥪'},
+];
+let recipes=[];
 let planning=lsLoad('planning',{});
 let weekOffset=lsLoad('weekOffset',0);
 let currentSlot=null;
@@ -518,13 +519,20 @@ async function loadShopFromSupabase(){
 }
 async function loadRecipesFromSupabase(){
   const{data,error}=await sb.from('recipes').select('*').order('created_at',{ascending:true});
-  if(error)return;
-  if(data&&data.length>0){
-    const fromDb=data.map(r=>({id:r.id,name:r.name,tag:r.tag,colorKey:r.color_key||'default',emoji:r.emoji||'🍽️'}));
-    const baseIds=new Set(fromDb.map(r=>r.id));
-    const localBase=recipes.filter(r=>typeof r.id==='number'&&r.id<=7&&!baseIds.has(r.id));
-    recipes=[...localBase,...fromDb];lsSave('recipes',recipes);renderRecipes();renderIphoneRecipes();
+  if(error){
+    // hors ligne : on utilise le cache localStorage
+    recipes=lsLoad('recipes_cache',[]);renderRecipes();renderIphoneRecipes();return;
   }
+  if(data.length===0){
+    // Première utilisation : insérer les recettes de base dans Supabase
+    const{data:inserted}=await sb.from('recipes').insert(BASE_RECIPES).select();
+    if(inserted){
+      recipes=inserted.map(r=>({id:r.id,name:r.name,tag:r.tag,colorKey:r.color_key||'default',emoji:r.emoji||'🍽️'}));
+    }
+  } else {
+    recipes=data.map(r=>({id:r.id,name:r.name,tag:r.tag,colorKey:r.color_key||'default',emoji:r.emoji||'🍽️'}));
+  }
+  lsSave('recipes_cache',recipes);renderRecipes();renderIphoneRecipes();
 }
 async function loadPlanningFromSupabase(){
   const{data,error}=await sb.from('planning').select('*');
