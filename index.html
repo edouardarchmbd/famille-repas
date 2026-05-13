@@ -272,8 +272,20 @@
     <div id="iphone-planning-rows"></div>
   </div>
 
-  <div id="iphone-pane-recettes" style="display:none;padding-bottom:20px">
+  <div id="iphone-pane-recettes" style="display:none;padding-bottom:100px">
     <div class="iphone-recipe-list" id="iphone-recipe-list"></div>
+    <!-- Formulaire ajout iPhone -->
+    <div style="padding:12px 16px;border-top:0.5px solid var(--border);margin-top:8px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:11px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:0.05em">Ajouter une recette</div>
+      <div id="iphone-emoji-row" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+      <input id="iphone-recipe-input" placeholder="Nom de la recette..." style="padding:12px 14px;font-size:16px;border:0.5px solid var(--border-mid);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;outline:none;width:100%"/>
+      <div style="display:flex;gap:8px">
+        <button id="iphone-btn-v" onclick="selectIphoneTag('v')" style="flex:1;padding:10px 4px;font-size:13px;font-weight:500;border:0.5px solid var(--teal-bd);border-radius:20px;background:var(--teal-bg);color:var(--teal-txt);cursor:pointer;font-family:'DM Sans',sans-serif">Végé</button>
+        <button id="iphone-btn-p" onclick="selectIphoneTag('p')" style="flex:1;padding:10px 4px;font-size:13px;font-weight:500;border:0.5px solid var(--border-mid);border-radius:20px;background:var(--surface);color:var(--text-2);cursor:pointer;font-family:'DM Sans',sans-serif">Poisson</button>
+        <button id="iphone-btn-vi" onclick="selectIphoneTag('vi')" style="flex:1;padding:10px 4px;font-size:13px;font-weight:500;border:0.5px solid var(--border-mid);border-radius:20px;background:var(--surface);color:var(--text-2);cursor:pointer;font-family:'DM Sans',sans-serif">Viande</button>
+      </div>
+      <button onclick="addRecipeIphone()" style="padding:13px;font-size:15px;font-weight:500;border:none;border-radius:var(--radius);background:var(--accent);color:white;cursor:pointer;font-family:'DM Sans',sans-serif">Ajouter la recette</button>
+    </div>
   </div>
 </div>
 
@@ -340,10 +352,10 @@
         <div class="ia-name" id="ia-name"></div>
         <div id="ia-tag"></div>
         <div style="display:flex;gap:8px;margin-top:10px">
-          <button class="ia-action" style="flex:1" onclick="nextSuggestion()">
+          <button class="ia-action" style="flex:1;min-width:0" onclick="nextSuggestion()">
             <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>Autre idée
           </button>
-          <button class="ia-action" style="flex:0 0 auto;padding:9px 14px" onclick="addSuggestionToRecipes()" title="Ajouter aux recettes">
+          <button class="ia-action" style="width:42px;flex-shrink:0;padding:9px" onclick="addSuggestionToRecipes()" title="Ajouter aux recettes">
             <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </button>
         </div>
@@ -874,13 +886,47 @@ function renderIphonePlanning(){
 }
 
 // ---- IPHONE RECETTES ----
+let selectedIphoneTag='v';
+let selectedIphoneEmoji='🍽️';
+
 function renderIphoneRecipes(){
   const el=document.getElementById('iphone-recipe-list');if(!el)return;
-  if(!recipes.length){el.innerHTML='<div class="iphone-empty" style="padding:40px 20px">Aucune recette</div>';return}
-  el.innerHTML=recipes.map(r=>{
-    const m=TAG_META[r.tag];
-    return '<div class="iphone-recipe-row"><span style="font-size:20px">'+(r.emoji||'🍽️')+'</span><span class="iphone-recipe-name">'+esc(r.name)+'</span><span class="tag-pill '+m.cls+'">'+m.label+'</span></div>';
-  }).join('');
+  if(!recipes.length){el.innerHTML='<div class="iphone-empty" style="padding:40px 20px">Aucune recette</div>';}
+  else {
+    el.innerHTML=recipes.map(r=>{
+      const m=TAG_META[r.tag];const emoji=r.emoji||'🍽️';
+      return '<div class="iphone-recipe-row"><span style="font-size:20px">'+emoji+'</span><span class="iphone-recipe-name">'+esc(r.name)+'</span><span class="tag-pill '+m.cls+'">'+m.label+'</span></div>';
+    }).join('');
+  }
+  renderIphoneEmojiRow();
+}
+
+function renderIphoneEmojiRow(){
+  const el=document.getElementById('iphone-emoji-row');if(!el)return;
+  el.innerHTML=EMOJIS.map(e=>'<div onclick="selectIphoneEmoji(&apos;'+e+'&apos;)" style="font-size:20px;width:38px;height:38px;border-radius:8px;border:0.5px solid '+(e===selectedIphoneEmoji?'var(--accent)':'var(--border)')+';background:'+(e===selectedIphoneEmoji?'var(--purple-bg)':'var(--bg)')+';cursor:pointer;display:flex;align-items:center;justify-content:center">'+e+'</div>').join('');
+}
+
+function selectIphoneEmoji(e){selectedIphoneEmoji=e;renderIphoneEmojiRow()}
+
+function selectIphoneTag(tag){
+  selectedIphoneTag=tag;
+  const styles={v:{bd:'var(--teal-bd)',bg:'var(--teal-bg)',txt:'var(--teal-txt)'},p:{bd:'var(--blue-bd)',bg:'var(--blue-bg)',txt:'var(--blue-txt)'},vi:{bd:'var(--amber-bd)',bg:'var(--amber-bg)',txt:'var(--amber-txt)'}};
+  ['v','p','vi'].forEach(t=>{
+    const btn=document.getElementById('iphone-btn-'+t);if(!btn)return;
+    if(t===tag){const s=styles[t];btn.style.borderColor=s.bd;btn.style.background=s.bg;btn.style.color=s.txt}
+    else{btn.style.borderColor='var(--border-mid)';btn.style.background='var(--surface)';btn.style.color='var(--text-2)'}
+  });
+}
+
+async function addRecipeIphone(){
+  const input=document.getElementById('iphone-recipe-input');const val=input.value.trim();if(!val)return;
+  input.value='';const emoji=selectedIphoneEmoji;const tag=selectedIphoneTag;
+  if(online){
+    const{data,error}=await sb.from('recipes').insert({name:val,tag,color_key:'default',emoji}).select().single();
+    if(!error&&data){recipes.push({id:data.id,name:data.name,tag:data.tag,colorKey:'default',emoji});lsSave('recipes',recipes);renderRecipes();renderIphoneRecipes();return}
+  }
+  recipes.push({id:Date.now(),name:val,tag,colorKey:'default',emoji});
+  lsSave('recipes',recipes);renderRecipes();renderIphoneRecipes();
 }
 
 // ---- IPHONE TABS ----
