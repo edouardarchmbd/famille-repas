@@ -857,7 +857,7 @@ shopItems = lsLoad('shopItems', []);
 renderShop();
 
 function hardRefresh() {
-  location.reload();
+  window.location.href = window.location.href;
 }
 
 (async () => {
