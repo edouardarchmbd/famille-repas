@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Repas">
 <title>Repas famille</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -198,9 +201,14 @@
 <div id="view-iphone">
   <div class="iphone-header">
     <span class="iphone-title" id="iphone-title">Courses</span>
-    <div class="sync-badge offline" id="iphone-sync-badge">
-      <div class="sync-dot"></div>
-      <span id="iphone-sync-label">Connexion...</span>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button onclick="hardRefresh()" style="border:none;background:none;cursor:pointer;padding:4px;color:var(--text-2);display:flex;align-items:center;" aria-label="rafraichir">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      </button>
+      <div class="sync-badge offline" id="iphone-sync-badge">
+        <div class="sync-dot"></div>
+        <span id="iphone-sync-label">Connexion...</span>
+      </div>
     </div>
   </div>
   <div class="iphone-tabs">
@@ -450,6 +458,20 @@ async function loadShopFromSupabase() {
 }
 
 // ---- LOAD PLANNING ----
+async function loadRecipesFromSupabase() {
+  const {data, error} = await sb.from('recipes').select('*').order('created_at', {ascending:true});
+  if (error) return;
+  if (data && data.length > 0) {
+    const fromDb = data.map(r => ({id:r.id, name:r.name, tag:r.tag, colorKey:r.color_key||'default'}));
+    // Merge : garder les recettes de base locales (id <= 7) + celles de Supabase
+    const baseIds = new Set(fromDb.map(r => r.id));
+    const localBase = recipes.filter(r => typeof r.id === 'number' && r.id <= 7 && !baseIds.has(r.id));
+    recipes = [...localBase, ...fromDb];
+    lsSave('recipes', recipes);
+    renderRecipes();
+  }
+}
+
 async function loadPlanningFromSupabase() {
   const { data, error } = await sb.from('planning').select('*');
   if (error) { planning = lsLoad('planning', {}); renderPlanning(); return; }
@@ -488,7 +510,23 @@ function subscribePlanning() {
       if (eventType === 'DELETE') { delete planning[o.id]; }
       else { planning[n.id] = n.recipe_id; }
       lsSave('planning', planning);
-      renderPlanning();
+      if (isPhone) renderIphonePlanning(); else renderPlanning();
+    }).subscribe();
+}
+
+function subscribeRecipes() {
+  sb.channel('recipes-rt')
+    .on('postgres_changes', {event:'*', schema:'public', table:'recipes'}, payload => {
+      const {eventType, new:n, old:o} = payload;
+      if (eventType === 'INSERT') {
+        if (!recipes.find(r => r.id === n.id)) {
+          recipes.push({id:n.id, name:n.name, tag:n.tag, colorKey:n.color_key||'default'});
+          lsSave('recipes', recipes); renderRecipes();
+        }
+      } else if (eventType === 'DELETE') {
+        recipes = recipes.filter(r => r.id !== o.id);
+        lsSave('recipes', recipes); renderRecipes();
+      }
     }).subscribe();
 }
 
@@ -698,13 +736,25 @@ function selectTag(tag) {
   selectedTag = tag;
   ['v','p','vi'].forEach(t => { document.getElementById('btn-'+t).className = 'tag-btn'+(t===tag?' sel-'+t:''); });
 }
-function addRecipe() {
+async function addRecipe() {
   const input = document.getElementById('new-recipe-input'); const val = input.value.trim();
   if (!val) return;
+  input.value = '';
+  if (online) {
+    const {data, error} = await sb.from('recipes').insert({name:val, tag:selectedTag, color_key:'default'}).select().single();
+    if (!error && data) {
+      recipes.push({id:data.id, name:data.name, tag:data.tag, colorKey:data.color_key});
+      lsSave('recipes', recipes); renderRecipes(); return;
+    }
+  }
   recipes.push({id:Date.now(), name:val, tag:selectedTag, colorKey:'default'});
-  lsSave('recipes', recipes); input.value=''; renderRecipes();
+  lsSave('recipes', recipes); renderRecipes();
 }
-function deleteRecipe(id) { recipes = recipes.filter(r => r.id !== id); lsSave('recipes', recipes); renderRecipes(); }
+async function deleteRecipe(id) {
+  recipes = recipes.filter(r => r.id !== id);
+  lsSave('recipes', recipes); renderRecipes();
+  if (online) await sb.from('recipes').delete().eq('id', id);
+}
 function renderRecipes() {
   const list = document.getElementById('recipe-list'); if (!list) return;
   if (!recipes.length) { list.innerHTML = '<div class="empty-state">Aucune recette</div>'; return; }
@@ -803,12 +853,20 @@ initView();
 shopItems = lsLoad('shopItems', []);
 renderShop();
 
+async function hardRefresh() {
+  await loadShopFromSupabase();
+  await loadRecipesFromSupabase();
+  await loadPlanningFromSupabase();
+}
+
 (async () => {
   await loadShopFromSupabase();
+  await loadRecipesFromSupabase();
   await loadPlanningFromSupabase();
   setTimeout(() => {
     subscribeShop();
     subscribePlanning();
+    subscribeRecipes();
   }, 800);
 })();
 </script>
