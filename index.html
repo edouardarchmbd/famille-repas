@@ -35,7 +35,7 @@
   #view-iphone{display:none;max-width:480px;margin:0 auto;padding-bottom:80px}
   .iphone-header{background:var(--bg);padding:20px 20px 14px;position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between}
   .iphone-title{font-size:24px;font-weight:500;color:var(--text)}
-  .iphone-tabs{display:flex;border-bottom:0.5px solid var(--border);background:var(--surface)}
+  .iphone-tabs{display:flex;border-bottom:0.5px solid var(--border);background:var(--surface);position:sticky;top:58px;z-index:9}
   .iphone-tab{flex:1;padding:12px 4px;font-size:13px;font-weight:500;color:var(--text-2);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;display:flex;align-items:center;justify-content:center;gap:5px;font-family:'DM Sans',sans-serif}
   .iphone-tab svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
   .iphone-tab.active{color:var(--accent);border-bottom:2px solid var(--accent)}
@@ -605,10 +605,26 @@ async function deleteItem(id){
   if(online)await sb.from('courses').delete().eq('id',id);
 }
 function confirmClearShop(){
-  document.getElementById('confirm-title').textContent='Vider la liste de courses ?';
-  document.getElementById('confirm-msg').textContent='Tous les articles seront supprimés.';
-  document.getElementById('confirm-ok-btn').textContent='Vider';
-  confirmCallback=async()=>{if(online)await sb.from('courses').delete().neq('id',0);shopItems=[];lsSave('shopItems',shopItems);renderShop()};
+  const done=shopItems.filter(i=>i.done);
+  if(!done.length){
+    document.getElementById('confirm-title').textContent='Vider la liste ?';
+    document.getElementById('confirm-msg').textContent='Aucun article coché pour le moment. Vider toute la liste ?';
+    document.getElementById('confirm-ok-btn').textContent='Tout vider';
+    confirmCallback=async()=>{
+      const ids=shopItems.map(i=>i.id);
+      if(online&&ids.length)await sb.from('courses').delete().in('id',ids);
+      shopItems=[];lsSave('shopItems',shopItems);renderShop();
+    };
+  } else {
+    document.getElementById('confirm-title').textContent='Vider le panier ?';
+    document.getElementById('confirm-msg').textContent=done.length+' article'+(done.length>1?'s':'')+' coché'+(done.length>1?'s':'')+' sera'+(done.length>1?'ont':'')+' supprimé'+(done.length>1?'s':'')+'. Les articles non cochés restent dans la liste.';
+    document.getElementById('confirm-ok-btn').textContent='Vider le panier';
+    confirmCallback=async()=>{
+      const ids=done.map(i=>i.id);
+      if(online&&ids.length)await sb.from('courses').delete().in('id',ids);
+      shopItems=shopItems.filter(i=>!i.done);lsSave('shopItems',shopItems);renderShop();
+    };
+  }
   document.getElementById('confirm-backdrop').classList.add('open');
 }
 
@@ -838,27 +854,44 @@ function closeEmojiModal(){document.getElementById('emoji-modal-backdrop').class
 
 // ---- SHOP RENDER ----
 function renderShop(){renderShopIpad();renderShopIphone()}
-function renderShopIpad(){
-  const el=document.getElementById('shop-list');if(!el)return;
-  el.innerHTML=shopItems.length?shopItems.map(i=>
-    '<div class="shop-item">'+
-    '<div class="cb'+(i.done?' done':'')+'\" onclick="toggleItem('+JSON.stringify(i.id)+')">'+(i.done?'<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>':'')+' </div>'+
+function shopItemHTMLIpad(i){
+  return '<div class="shop-item">'+
+    '<div class="cb'+(i.done?' done':'')+'" onclick="toggleItem('+JSON.stringify(i.id)+')">'+(i.done?'<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>':'')+' </div>'+
     '<span class="item-name'+(i.done?' done':'')+'">'+esc(i.name)+'</span>'+
     '<button class="item-del" onclick="deleteItem('+JSON.stringify(i.id)+')" aria-label="supprimer"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'+
-    '</div>'
-  ).join(''):'<div class="empty-state">La liste est vide</div>';
+    '</div>';
+}
+function renderShopIpad(){
+  const el=document.getElementById('shop-list');if(!el)return;
+  if(!shopItems.length){el.innerHTML='<div class="empty-state">La liste est vide</div>';return}
+  const pending=shopItems.filter(i=>!i.done);
+  const done=shopItems.filter(i=>i.done);
+  let html=pending.map(shopItemHTMLIpad).join('');
+  if(done.length){
+    html+='<div style="font-size:10px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:0.05em;padding:12px 0 6px">Dans le panier</div>';
+    html+=done.map(shopItemHTMLIpad).join('');
+  }
+  el.innerHTML=html;
+}
+function shopItemHTMLIphone(i){
+  return '<div class="iphone-item">'+
+    '<div class="iphone-cb'+(i.done?' done':'')+'" onclick="toggleItem('+JSON.stringify(i.id)+')">'+(i.done?'<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>':'')+' </div>'+
+    '<span class="iphone-name'+(i.done?' done':'')+'">'+esc(i.name)+'</span>'+
+    '<button class="iphone-del" onclick="deleteItem('+JSON.stringify(i.id)+')" aria-label="supprimer"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'+
+    '</div>';
 }
 function renderShopIphone(){
   const el=document.getElementById('iphone-list');const cw=document.getElementById('iphone-clear-wrap');if(!el)return;
   if(!shopItems.length){el.innerHTML='<div class="iphone-empty">La liste est vide.<br>Ajoutez un article ci-dessous.</div>';if(cw)cw.style.display='none';return}
   if(cw)cw.style.display='block';
-  el.innerHTML=shopItems.map(i=>
-    '<div class="iphone-item">'+
-    '<div class="iphone-cb'+(i.done?' done':'')+'\" onclick="toggleItem('+JSON.stringify(i.id)+')">'+(i.done?'<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>':'')+' </div>'+
-    '<span class="iphone-name'+(i.done?' done':'')+'">'+esc(i.name)+'</span>'+
-    '<button class="iphone-del" onclick="deleteItem('+JSON.stringify(i.id)+')" aria-label="supprimer"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'+
-    '</div>'
-  ).join('');
+  const pending=shopItems.filter(i=>!i.done);
+  const done=shopItems.filter(i=>i.done);
+  let html=pending.map(shopItemHTMLIphone).join('');
+  if(done.length){
+    html+='<div style="font-size:11px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:0.05em;padding:14px 0 8px">Dans le panier</div>';
+    html+=done.map(shopItemHTMLIphone).join('');
+  }
+  el.innerHTML=html;
 }
 
 // ---- IPHONE PLANNING ----
@@ -938,8 +971,12 @@ async function addRecipeIphone(){
 }
 
 // ---- IPHONE TABS ----
+const IPHONE_TABS=['courses','planning','recettes'];
+let currentIphoneTab='courses';
+
 function showIphoneTab(name){
-  ['courses','planning','recettes'].forEach(p=>{
+  currentIphoneTab=name;
+  IPHONE_TABS.forEach(p=>{
     const pane=document.getElementById('iphone-pane-'+p);
     const tab=document.getElementById('itab-'+p);
     if(pane)pane.style.display=p===name?'block':'none';
@@ -972,11 +1009,48 @@ function renderSuggestion(){
 }
 
 // ---- TABS IPAD ----
+const IPAD_TABS=['planning','recettes','courses','recap'];
+let currentIpadTab='planning';
+
 function showTab(name,el){
+  currentIpadTab=name;
   document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.getElementById('pane-'+name).classList.add('active');el.classList.add('active');
+  document.getElementById('pane-'+name).classList.add('active');
+  if(el)el.classList.add('active');
+  else{
+    const idx=IPAD_TABS.indexOf(name);
+    const tabs=document.querySelectorAll('.tab');
+    if(tabs[idx])tabs[idx].classList.add('active');
+  }
   if(name==='recap')renderRecap();
+}
+
+// ---- SWIPE ----
+function initSwipe(){
+  let tx=0,ty=0,swiping=false;
+  const THRESHOLD=60,RATIO=1.5;
+
+  function onStart(x,y){tx=x;ty=y;swiping=true}
+  function onEnd(x,y){
+    if(!swiping)return;swiping=false;
+    const dx=x-tx,dy=y-ty;
+    if(Math.abs(dx)<THRESHOLD||Math.abs(dx)<Math.abs(dy)*RATIO)return;
+    const dir=dx<0?1:-1;
+    if(isPhone){
+      const idx=IPHONE_TABS.indexOf(currentIphoneTab);
+      const next=IPHONE_TABS[idx+dir];
+      if(next)showIphoneTab(next);
+    } else {
+      const idx=IPAD_TABS.indexOf(currentIpadTab);
+      const next=IPAD_TABS[idx+dir];
+      if(next)showTab(next,null);
+    }
+  }
+
+  // Touch
+  document.addEventListener('touchstart',e=>{const t=e.touches[0];onStart(t.clientX,t.clientY)},{passive:true});
+  document.addEventListener('touchend',e=>{const t=e.changedTouches[0];onEnd(t.clientX,t.clientY)},{passive:true});
 }
 
 // ---- CONFIRM ----
@@ -984,7 +1058,7 @@ function closeConfirm(){document.getElementById('confirm-backdrop').classList.re
 document.getElementById('confirm-ok-btn').onclick=()=>{if(confirmCallback)confirmCallback();closeConfirm()};
 
 // ---- BOOT ----
-initView();shopItems=lsLoad('shopItems',[]);renderShop();
+initView();shopItems=lsLoad('shopItems',[]);renderShop();initSwipe();
 
 (async()=>{
   await loadShopFromSupabase();
