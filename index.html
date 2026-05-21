@@ -522,7 +522,7 @@ function initView(){
   }
 }
 
-function hardRefresh(){window.location.href=window.location.href}
+function hardRefresh(){window.location.href=window.location.pathname+'?v='+Date.now()}
 
 // ---- SYNC ----
 function setSyncStatus(ok){
