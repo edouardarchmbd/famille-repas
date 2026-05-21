@@ -564,7 +564,8 @@ let doneCallback=null;
 let menageVoleeAssign='e';
 let todoAssign='e';
 let currentSection='repas';
-const REPAS_TABS=['planning','recettes','courses','recap'];
+const isPhone=window.innerWidth<600;
+const REPAS_TABS=isPhone?['courses','planning','recettes','recap']:['planning','recettes','courses','recap'];
 const MENAGE_TABS=['planning','config'];
 let currentRepasTab='planning';
 let currentMenageTab='planning';
@@ -1134,6 +1135,19 @@ document.getElementById('week-label').textContent=getWeekLabel(weekOffset);
 document.getElementById('menage-week-label').textContent=getWeekLabel(menageWeekOffset);
 updateTodayBtn();updateMenageTodayBtn();
 shopItems=lsLoad('shopItems',[]);renderShop();
+// Sur iPhone, démarrer sur Courses dans Repas
+if(isPhone){
+  const firstTab=REPAS_TABS[0];
+  document.querySelectorAll('#pane-planning,#pane-recettes,#pane-courses,#pane-recap').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('#repas-tabs .stab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('pane-'+firstTab).classList.add('active');
+  currentRepasTab=firstTab;
+  // Activer le bon onglet visuel
+  const tabOrder=['planning','recettes','courses','recap'];
+  const tabIdx=tabOrder.indexOf(firstTab);
+  const stabs=document.querySelectorAll('#repas-tabs .stab');
+  if(stabs[tabIdx])stabs[tabIdx].classList.add('active');
+}
 initSwipe();
 
 (async()=>{
