@@ -954,13 +954,29 @@ function renderIphonePlanning(){
     block.innerHTML='<div class="iphone-day-header'+(isWeekend?' weekend-hdr':'')+'">'+day+' '+numStr+' '+MONTHS[d.getMonth()]+'</div>';
     ['midi','soir'].forEach(slot=>{
       const key=slotKey(di,slot);const sd=getSlotDisplay(key);
+      const v=getSlotData(key);
+      const excE=v?v.exc_e:null,excC=v?v.exc_c:null,excM=v?v.exc_m:null;
       const slotDiv=document.createElement('div');slotDiv.className='iphone-slot';
       slotDiv.innerHTML='<div class="iphone-slot-label">'+(slot==='midi'?'Midi':'Soir')+'</div>';
       const cell=document.createElement('div');
       cell.className='iphone-slot-cell'+(sd?'':' empty');
-      if(sd){cell.style.background=sd.col.bg;cell.style.borderColor=sd.col.bd;
-        const removeBtn='<button class="iphone-meal-remove" onclick="event.stopPropagation();removeSlotIphone(\''+key+'\')" aria-label="retirer"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
-        cell.innerHTML='<div class="iphone-slot-inner"><div class="iphone-meal-name" style="color:'+sd.col.txt+'">'+sd.emoji+' '+esc(sd.name)+removeBtn+'</div></div>';
+      if(sd){
+        cell.style.background=sd.col.bg;cell.style.borderColor=sd.col.bd;
+        const rmBtn='<button class="iphone-meal-remove" onclick="event.stopPropagation();removeSlotIphone(\''+key+'\')" aria-label="retirer"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
+        let html='<div class="iphone-slot-inner"><div class="iphone-meal-name" style="color:'+sd.col.txt+'">'+sd.emoji+' '+esc(sd.name)+rmBtn+'</div>';
+        html+='<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-top:7px">';
+        if(!excE)html+='<button class="initial-btn neutral-e" onclick="event.stopPropagation();openExceptionModal(\''+key+'\',\'e\')">E</button>';
+        if(!excC)html+='<button class="initial-btn neutral-c" onclick="event.stopPropagation();openExceptionModal(\''+key+'\',\'c\')">C</button>';
+        if(!excM)html+='<button class="initial-btn neutral-m" onclick="event.stopPropagation();openExceptionModal(\''+key+'\',\'m\')">M</button>';
+        html+='</div>';
+        [{key:'e',dot:'exception-dot-e',text:excE},{key:'c',dot:'exception-dot-c',text:excC},{key:'m',dot:'exception-dot-m',text:excM}].forEach(p=>{
+          if(!p.text)return;
+          html+='<div class="exception-line"><div class="exception-dot '+p.dot+'"></div>';
+          html+='<button class="initial-btn neutral-'+p.key+'" style="width:18px;height:18px;font-size:9px;flex-shrink:0" onclick="event.stopPropagation();openExceptionModal(\''+key+'\',\''+p.key+'\')">'+ p.key.toUpperCase()+'</button>';
+          html+='<span class="exception-text">'+esc(p.text)+'</span></div>';
+        });
+        html+='</div>';
+        cell.innerHTML=html;
       } else {
         cell.innerHTML='<svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
       }
