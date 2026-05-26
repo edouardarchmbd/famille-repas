@@ -38,10 +38,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 /* ===== SHARED TOPBAR ===== */
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:18px 24px 14px;background:var(--bg);position:sticky;top:0;z-index:10}
-.week-nav{display:flex;align-items:center;gap:8px}
-.week-label{font-size:clamp(12px,3.5vw,15px);font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40vw}
+.week-nav{display:flex;align-items:center;gap:4px;min-width:0;flex:1}
+.week-label{font-size:clamp(12px,3.5vw,15px);font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:35vw}
 .nav-arrow{font-size:26px;line-height:1;border:none;background:none;cursor:pointer;color:var(--text-2);padding:4px 8px;border-radius:var(--radius-sm)}
-.topbar-right{display:flex;align-items:center;gap:10px}
+.topbar-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
 .sync-badge{font-size:11px;padding:4px 10px;border-radius:20px;background:var(--teal-bg);color:var(--teal-txt);display:flex;align-items:center;gap:5px}
 .sync-dot{width:6px;height:6px;border-radius:50%;background:#1d9e75}
 .sync-badge.offline{background:#f1efea;color:var(--text-3)}
@@ -239,6 +239,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .emoji-modal-actions{display:flex;gap:8px}
 .emoji-modal-cancel{flex:1;padding:9px;font-size:13px;font-weight:500;border:0.5px solid var(--border-mid);border-radius:var(--radius);background:transparent;color:var(--text);cursor:pointer;font-family:'DM Sans',sans-serif}
 .emoji-modal-ok{flex:1;padding:9px;font-size:13px;font-weight:500;border:none;border-radius:var(--radius);background:var(--accent);color:white;cursor:pointer;font-family:'DM Sans',sans-serif}
+@media(max-width:600px){
+  .week-prefix{display:none}
+  #today-btn,#menage-today-btn{font-size:10px;padding:4px 8px}
+}
 </style>
 </head>
 <body>
@@ -529,6 +533,13 @@ const BASE_RECIPES=[
   {name:'Croque truite fumée',tag:'p',color_key:'default',emoji:'🥪'},
 ];
 
+function setWeekLabel(id, offset){
+  const m=getWeekStart(offset);
+  const date=m.getDate()+' '+['jan','fév','mar','avr','mai','juin','juil','aoû','sep','oct','nov','déc'][m.getMonth()];
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.innerHTML='<span class="week-prefix">Semaine du </span>'+date;
+}
 function lsLoad(k,d){try{return JSON.parse(localStorage.getItem(k))||d}catch(e){return d}}
 function lsSave(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
@@ -718,10 +729,10 @@ function getWeekStart(offset){
 function getWeekLabel(offset){const m=getWeekStart(offset);return'Semaine du '+m.getDate()+' '+MONTHS[m.getMonth()];}
 function changeWeek(dir){
   weekOffset+=dir;lsSave('weekOffset',weekOffset);
-  document.getElementById('week-label').textContent=getWeekLabel(weekOffset);
+  setWeekLabel('week-label', weekOffset);
   updateTodayBtn();renderPlanning();renderRecap();
 }
-function goToToday(){weekOffset=0;lsSave('weekOffset',0);document.getElementById('week-label').textContent=getWeekLabel(0);updateTodayBtn();renderPlanning();renderRecap();}
+function goToToday(){weekOffset=0;lsSave('weekOffset',0);setWeekLabel('week-label', 0);updateTodayBtn();renderPlanning();renderRecap();}
 function updateTodayBtn(){const b=document.getElementById('today-btn');if(b)b.style.display=weekOffset===0?'none':'inline-block';}
 function slotKey(di,slot){return weekOffset+'_'+di+'_'+slot;}
 function isToday(di,offset=weekOffset){
@@ -897,8 +908,8 @@ function getMenageWeekKey(offset){
   const m=getWeekStart(offset);return m.getFullYear()+'-W'+String(getISOWeek(m)).padStart(2,'0');
 }
 function getISOWeek(d){const jan4=new Date(d.getFullYear(),0,4);return Math.ceil(((d-jan4)/86400000+jan4.getDay()+1)/7);}
-function changeMenageWeek(dir){menageWeekOffset+=dir;lsSave('menageWeekOffset',menageWeekOffset);document.getElementById('menage-week-label').textContent=getWeekLabel(menageWeekOffset);updateMenageTodayBtn();renderMenagePlanning();}
-function goToMenageToday(){menageWeekOffset=0;lsSave('menageWeekOffset',0);document.getElementById('menage-week-label').textContent=getWeekLabel(0);updateMenageTodayBtn();renderMenagePlanning();}
+function changeMenageWeek(dir){menageWeekOffset+=dir;lsSave('menageWeekOffset',menageWeekOffset);setWeekLabel('menage-week-label', menageWeekOffset);updateMenageTodayBtn();renderMenagePlanning();}
+function goToMenageToday(){menageWeekOffset=0;lsSave('menageWeekOffset',0);setWeekLabel('menage-week-label', 0);updateMenageTodayBtn();renderMenagePlanning();}
 function updateMenageTodayBtn(){const b=document.getElementById('menage-today-btn');if(b)b.style.display=menageWeekOffset===0?'none':'inline-block';}
 
 function getTaskCompletion(taskId){
@@ -1128,8 +1139,8 @@ function closeConfirm(){document.getElementById('confirm-backdrop').classList.re
 document.getElementById('confirm-ok-btn').onclick=()=>{if(confirmCallback)confirmCallback();closeConfirm();};
 
 // ===== BOOT =====
-document.getElementById('week-label').textContent=getWeekLabel(weekOffset);
-document.getElementById('menage-week-label').textContent=getWeekLabel(menageWeekOffset);
+setWeekLabel('week-label', weekOffset);
+setWeekLabel('menage-week-label', menageWeekOffset);
 updateTodayBtn();updateMenageTodayBtn();
 shopItems=lsLoad('shopItems',[]);renderShop();
 // Sur iPhone, démarrer sur Courses dans Repas
