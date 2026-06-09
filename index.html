@@ -734,7 +734,12 @@ function changeWeek(dir){
 }
 function goToToday(){weekOffset=0;lsSave('weekOffset',0);setWeekLabel('week-label', 0);updateTodayBtn();renderPlanning();renderRecap();}
 function updateTodayBtn(){const b=document.getElementById('today-btn');if(b)b.style.display=weekOffset===0?'none':'inline-block';}
-function slotKey(di,slot){return weekOffset+'_'+di+'_'+slot;}
+function slotKey(di,slot){
+  const ws=getWeekStart(weekOffset);
+  const d=new Date(ws);d.setDate(ws.getDate()+di);
+  const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  return iso+'_'+slot;
+}
 function isToday(di,offset=weekOffset){
   const ws=getWeekStart(offset);const d=new Date(ws);d.setDate(ws.getDate()+di);
   const now=new Date();return d.getDate()===now.getDate()&&d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
